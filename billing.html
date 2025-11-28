@@ -7,7 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background:#f4f4f4; }
-    h1,h2,h3{ color:#333 }
+    h1{ color:#096ae9}h2,h3{ color:#333 }
     table{ width:100%; border-collapse:collapse; margin-top:12px }
     th,td{ border:1px solid #ddd; padding:8px; text-align:left }
     th{ background:#007bff; color:#fff }
@@ -58,7 +58,7 @@
       box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px rgba(0,0,0,0.08);
     }
 
-    /* NEW: suggestion dropdown styling */
+    /* suggestion dropdown styling */
     .suggestions {
       list-style:none;
       margin:0;
@@ -86,8 +86,6 @@
   </style>
 </head>
 <body>
-  <h1>🧾 Billing / POS</h1>
-
   <!-- Navigation (updated to pill style) -->
   <div class="nav">
     <a href="dashboard.html" class="dashboard">📊 Dashboard</a>
@@ -95,6 +93,7 @@
     <a href="billing.html" class="billing">🧾 Billing</a>
     <a href="reports.html" class="reports">📈 Reports</a>
   </div>
+  <h1>🧾 Billing / POS</h1>
 
   <p><strong>Note:</strong> Make sure you have added products in the <em>Stock</em> page.</p>
 
@@ -113,13 +112,13 @@
   <h2>Add Items</h2>
   <label for="productSearch">Search Product</label>
 
-  <!-- NEW: wrapper + suggestions list -->
+  <!-- wrapper + suggestions list -->
   <div class="field-wrapper">
     <input id="productSearch" type="text" placeholder="Type product name..." class="small" />
     <ul id="productSuggestions" class="suggestions"></ul>
   </div>
 
-  <!-- NEW: editable unit price -->
+  <!-- editable unit price -->
   <label for="unitPrice">Unit Price (₹)</label>
   <input id="unitPrice" type="number" min="0" step="0.01" class="small" />
 
@@ -180,8 +179,8 @@
     const custPhoneInput = document.getElementById('custPhone');
     const custEmailInput = document.getElementById('custEmail');
     const productSearchInput = document.getElementById('productSearch');
-    const productSuggestions = document.getElementById('productSuggestions'); // NEW
-    const unitPriceInput = document.getElementById('unitPrice'); // NEW
+    const productSuggestions = document.getElementById('productSuggestions');
+    const unitPriceInput = document.getElementById('unitPrice');
     const billQtyInput = document.getElementById('billQty');
     const addToCartBtn = document.getElementById('addToCartBtn');
     const cartTableBody = document.querySelector('#cartTable tbody');
@@ -196,7 +195,7 @@
     let cart = [];
     let alert100Shown = false;
     let alert50Shown = false;
-    let selectedProductId = null; // NEW: track selected product
+    let selectedProductId = null; // track selected product
 
     function formatCurrency(v){ return "₹" + Number(v).toFixed(2); }
 
@@ -207,7 +206,7 @@
         .replace(/>/g,'&gt;');
     }
 
-    // NEW: build suggestion list when typing
+    // build suggestion list when typing
     productSearchInput.addEventListener('input', function () {
       const query = productSearchInput.value.trim().toLowerCase();
       products = loadProducts();
@@ -247,7 +246,7 @@
       productSuggestions.style.display = "block";
     });
 
-    // NEW: hide suggestions on click outside
+    // hide suggestions on click outside
     document.addEventListener('click', function(e){
       if (!productSuggestions.contains(e.target) && e.target !== productSearchInput) {
         productSuggestions.style.display = "none";
@@ -284,7 +283,7 @@
         return;
       }
 
-      // NEW: allow custom price override
+      // allow custom price override
       let priceToUse = p.price;
       const customPrice = parseFloat(unitPriceInput.value);
       if (isFinite(customPrice) && customPrice > 0) {
@@ -386,7 +385,7 @@
       });
       saveSales();
 
-      // Generate invoice
+      // Generate invoice (tabular)
       generateInvoicePDF({
         customer: custNameInput.value || "Walk-in",
         phone: custPhoneInput.value || "",
@@ -407,37 +406,79 @@
       taxInput.value = "0";
       billQtyInput.value = "";
       productSearchInput.value = "";
-      unitPriceInput.value = ""; // NEW
-      selectedProductId = null;  // NEW
+      unitPriceInput.value = "";
+      selectedProductId = null;
 
       alert("✅ Checkout complete — stock updated and invoice generated.");
     });
 
-    // Invoice PDF
+    // Invoice PDF - improved tabular layout
     function generateInvoicePDF(data){
       if (jsPDF && typeof jsPDF === "function") {
         const doc = new jsPDF();
+
+        // Title
         doc.setFontSize(14);
         doc.text("Invoice", 105, 12, null, null, "center");
+
+        // Customer details
         doc.setFontSize(10);
-        doc.text(`Customer: ${data.customer}`, 10, 26);
-        doc.text(`Phone: ${data.phone}`, 10, 34);
-        doc.text(`Email: ${data.email}`, 10, 42);
-        let y = 54;
-        doc.text("Items:", 10, y); y += 6;
+        doc.text(`Customer: ${data.customer}`, 10, 22);
+        doc.text(`Phone: ${data.phone}`, 10, 28);
+        doc.text(`Email: ${data.email}`, 10, 34);
+
+        // Table header
+        let y = 46;
+        doc.setFontSize(11);
+        doc.text("Item",   10,  y);
+        doc.text("Qty",    90,  y);
+        doc.text("Price", 120,  y);
+        doc.text("Total", 160,  y);
+        doc.line(10, y + 2, 200, y + 2); // underline header
+
+        y += 8;
+
+        // Table rows
+        doc.setFontSize(10);
         data.items.forEach(it => {
-          doc.text(
-            `${it.name} • ${it.qty} ${it.unit} × ${formatCurrency(it.price)} = ${formatCurrency(it.qty * it.price)}`,
-            10, y
-          );
-          y += 8;
-          if (y > 270) { doc.addPage(); y = 20; }
+          const rowTotal = Number(it.qty) * Number(it.price);
+
+          // New page if needed
+          if (y > 260) {
+            doc.addPage();
+            y = 20;
+            doc.setFontSize(11);
+            doc.text("Item",   10,  y);
+            doc.text("Qty",    90,  y);
+            doc.text("Price", 120,  y);
+            doc.text("Total", 160,  y);
+            doc.line(10, y + 2, 200, y + 2);
+            y += 8;
+            doc.setFontSize(10);
+          }
+
+          // Row data
+          doc.text(String(it.name), 10,  y);
+          doc.text(`${it.qty} ${it.unit}`, 90,  y);
+          doc.text(formatCurrency(it.price), 120, y);
+          doc.text(formatCurrency(rowTotal), 160, y);
+
+          y += 7;
         });
+
+        // Summary (discount, tax, total)
+        y += 4;
+        doc.line(10, y, 200, y);
+        y += 8;
+
+        doc.text(`Discount: ${data.discountPct || 0}%`, 10, y);
         y += 6;
-        doc.text(`Discount: ${data.discountPct}%`, 10, y); y += 6;
-        doc.text(`Tax: ${data.taxPct}%`, 10, y); y += 8;
+        doc.text(`Tax: ${data.taxPct || 0}%`, 10, y);
+        y += 8;
+
         doc.setFontSize(12);
-        doc.text(`Total: ${formatCurrency(data.total)}`, 10, y);
+        doc.text(`Grand Total: ${formatCurrency(data.total)}`, 10, y);
+
         doc.save(`invoice_${Date.now()}.pdf`);
       } else {
         console.log("Invoice data:", data);
@@ -471,7 +512,7 @@
       });
     });
 
-    /* 🔁 NEW: Enter key moves to next field / triggers action */
+    /* Enter key moves to next field / triggers action */
     function setupEnterNavigation() {
       const order = [
         custNameInput,     // Enter -> Phone
