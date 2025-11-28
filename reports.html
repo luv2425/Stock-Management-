@@ -1,0 +1,157 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reports</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background:#f4f4f4; }
+    h1,h2,h3{ color:#333 }
+    button{ padding:8px; margin-bottom:8px; max-width:320px; background:#28a745; color:#fff; border:none; cursor:pointer }
+    button:hover{ background:#218838 }
+    .controls { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap }
+    .report { margin-top:18px; padding:12px; background:#fff; border:1px solid #ccc }
+    pre { white-space:pre-wrap; margin-top:12px }
+
+    /* 🌈 Pretty navbar (same as other pages) */
+    .nav {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      background: #ffffff;
+      padding: 14px 20px;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 15px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    }
+    .nav a.dashboard { background:#0d6efd; }             /* blue */
+    .nav a.stock     { background:#198754; }             /* green */
+    .nav a.billing   { background:#ffc107; color:#000; } /* yellow */
+    .nav a.reports   { background:#dc3545; }             /* red */
+    .nav a:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.18);
+      opacity: 0.95;
+    }
+    .nav a.active {
+      box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px rgba(0,0,0,0.08);
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Reports</h1>
+
+  <!-- Navigation -->
+  <div class="nav">
+    <a href="dashboard.html" class="dashboard">📊 Dashboard</a>
+    <a href="stock.html" class="stock">📦 Stock</a>
+    <a href="billing.html" class="billing">🧾 Billing</a>
+    <a href="reports.html" class="reports">📈 Reports</a>
+  </div>
+
+  <div class="report">
+    <h2>Generate Reports</h2>
+    <div class="controls">
+      <button id="salesReportBtn" type="button">📆 Daily Sales</button>
+      <button id="stockReportBtn" type="button">📦 Stock Remaining</button>
+      <button id="profitReportBtn" type="button">💰 Profit / Loss</button>
+    </div>
+    <pre id="reportOutput"></pre>
+  </div>
+
+  <script>
+    // ---- Shared storage helpers ----
+    const STORAGE_KEYS = {
+      PRODUCTS: 'sbm_products',
+      SALES: 'sbm_sales'
+    };
+
+    function loadProducts() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.PRODUCTS)) || []; }
+      catch (e) { return []; }
+    }
+
+    function loadSales() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.SALES)) || []; }
+      catch (e) { return []; }
+    }
+
+    function formatCurrency(v){ return "₹" + Number(v).toFixed(2); }
+
+    // ---- DOM ----
+    const salesReportBtn = document.getElementById('salesReportBtn');
+    const stockReportBtn = document.getElementById('stockReportBtn');
+    const profitReportBtn = document.getElementById('profitReportBtn');
+    const reportOutput = document.getElementById('reportOutput');
+
+    // Daily Sales Report
+    function generateSalesReport() {
+      const sales = loadSales();
+      const today = new Date().toDateString();
+      const todays = sales.filter(s => new Date(s.date).toDateString() === today);
+      let out = `Daily Sales Report — ${today}\n`;
+      if (todays.length === 0) out += "(No sales today)\n";
+      else {
+        let t = 0;
+        todays.forEach(s => {
+          out += `${s.customer} • ${formatCurrency(s.total)}\n`;
+          t += s.total || 0;
+        });
+        out += `\nTotal: ${formatCurrency(t)}\n`;
+      }
+      reportOutput.textContent = out;
+    }
+
+    // Stock Remaining Report
+    function generateStockReport() {
+      const products = loadProducts();
+      let out = "Stock Remaining:\n";
+      if (products.length === 0) out += "(No products)\n";
+      else products.forEach(p => {
+        out += `${p.name}: ${p.quantity} ${p.unit}\n`;
+      });
+      reportOutput.textContent = out;
+    }
+
+    // Profit / Loss Report
+    function generateProfitLoss() {
+      const sales = loadSales();
+      let totalSales = sales.reduce((a, s) => a + (s.total || 0), 0);
+      let totalCost = sales.reduce((a, s) => a + (s.cost || 0), 0);
+      let profit = totalSales - totalCost;
+      let out = `Profit / Loss Report\n` +
+                `Total Sales: ${formatCurrency(totalSales)}\n` +
+                `Total Cost: ${formatCurrency(totalCost)}\n` +
+                `Profit: ${formatCurrency(profit)}\n`;
+      reportOutput.textContent = out;
+    }
+
+    // Wire buttons
+    salesReportBtn.addEventListener('click', generateSalesReport);
+    stockReportBtn.addEventListener('click', generateStockReport);
+    profitReportBtn.addEventListener('click', generateProfitLoss);
+
+    // Highlight active navbar pill
+    document.addEventListener('DOMContentLoaded', function () {
+      const current = location.pathname.split('/').pop() || 'reports.html';
+      document.querySelectorAll('.nav a').forEach(link => {
+        if (link.getAttribute('href') === current) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

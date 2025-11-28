@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>📦 Stock Management (Admin Secured)</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background:#f4f4f4; }
+    h1,h2,h3{ color:#333 }
+    table{ width:100%; border-collapse:collapse; margin-top:12px }
+    th,td{ border:1px solid #ddd; padding:8px; text-align:left }
+    th{ background:#007bff; color:#fff }
+    tr:nth-child(even){ background:#f2f2f2 }
+    label{ display:block; margin:8px 0 4px }
+    input,select,button{ padding:8px; margin-bottom:8px; max-width:320px }
+    button{ background:#28a745; color:#fff; border:none; cursor:pointer }
+    button:hover{ background:#218838 }
+    .delete-btn{ background:#dc3545 }
+    .controls { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap }
+    /* --- Navbar --- */
+    .navbar {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      background: #ffffff;
+      padding: 14px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+    }
+    .nav-link {
+      text-decoration: none;
+      font-weight: bold;
+      color: #fff;
+      padding: 08px 18px;
+      border-radius: 999px;
+      transition: all 0.3s ease;
+      font-size: 15px;
+    }
+    .nav-link.dashboard { background-color: #007bff; }
+    .nav-link.stock { background-color: #28a745; }
+    .nav-link.billing { background-color: #ffc107; color:#000; }
+    .nav-link.reports { background-color: #dc3545; }
+    .nav-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    .nav-link.active {
+      outline: 3px solid rgba(255,255,255,0.8);
+      box-shadow: 0 0 8px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+  <h1>📦 Stock Management</h1>
+
+  <!-- 🌈 Navbar -->
+  <nav class="navbar">
+    <a href="dashboard.html" class="nav-link dashboard">📊 Dashboard</a>
+    <a href="stock.html" class="nav-link stock">📦 Stock</a>
+    <a href="billing.html" class="nav-link billing">🧾 Billing</a>
+    <a href="reports.html" class="nav-link reports">📈 Reports</a>
+  </nav>
+
+  <!-- Add Product Form -->
+  <form id="stockForm">
+    <h2>Add / Edit Product</h2>
+
+    <label for="name">Product Name</label>
+    <input id="name" type="text" required />
+
+    <label for="category">Category</label>
+    <input id="category" type="text" required />
+
+    <label for="quantity">Quantity</label>
+    <input id="quantity" type="number" min="0" step="1" required />
+
+    <label for="unit">Unit</label>
+    <select id="unit" required>
+      <option value="pcs">Pieces</option>
+      <option value="kg">Kilograms</option>
+      <option value="g">Grams</option>
+      <option value="L">Liters</option>
+      <option value="ml">Milliliters</option>
+    </select>
+
+    <label for="price">Selling Price (₹)</label>
+    <input id="price" type="number" step="0.01" required />
+
+    <label for="cost">Cost Price (₹)</label>
+    <input id="cost" type="number" step="0.01" required />
+
+    <div class="controls">
+      <button type="submit">Save Product</button>
+      <button id="clearAll" type="button" style="background:#6c757d">Clear All Data</button>
+      <button id="exportCSVBtn" type="button" style="background:#17a2b8">Export Stock CSV</button>
+    </div>
+  </form>
+
+  <!-- Stock Table -->
+  <h2>Stock Inventory</h2>
+  <input id="search" type="text" placeholder="Search product..." style="max-width:400px" />
+  <table id="stockTable" aria-live="polite">
+    <thead>
+      <tr><th>Name</th><th>Category</th><th>Qty</th><th>Price</th><th>Value</th><th>Actions</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    /* =========================================
+       🔐 ADMIN ACCESS SYSTEM (built-in)
+    ========================================= */
+    let isAdmin = false; // becomes true after correct password
+    function ensureAdmin() {
+      if (isAdmin) return true;
+      const ADMIN_PASSWORD = "admin123"; // change this if needed
+      const pwd = prompt("Admin access required.\nPlease enter admin password:");
+      if (pwd === null) return false;
+      if (pwd === ADMIN_PASSWORD) {
+        isAdmin = true;
+        alert("✅ Admin verified. You can now modify stock.");
+        return true;
+      } else {
+        alert("❌ Access denied. Wrong password.");
+        return false;
+      }
+    }
+
+    /* =========================================
+       🌟 MAIN STOCK MANAGEMENT SCRIPT
+    ========================================= */
+    const STORAGE_KEYS = { PRODUCTS: 'sbm_products', SALES: 'sbm_sales' };
+
+    function loadProducts() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.PRODUCTS)) || []; }
+      catch (e) { return []; }
+    }
+    function saveProducts() {
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    }
+    function loadSales() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.SALES)) || []; }
+      catch (e) { return []; }
+    }
+    function saveSales() {
+      localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
+    }
+
+    // DOM elements
+    const stockForm = document.getElementById('stockForm');
+    const nameInput = document.getElementById('name');
+    const categoryInput = document.getElementById('category');
+    const quantityInput = document.getElementById('quantity');
+    const unitInput = document.getElementById('unit');
+    const priceInput = document.getElementById('price');
+    const costInput = document.getElementById('cost');
+    const searchInput = document.getElementById('search');
+    const stockTableBody = document.querySelector('#stockTable tbody');
+    const clearAllBtn = document.getElementById('clearAll');
+    const exportCSVBtn = document.getElementById('exportCSVBtn');
+
+    // Data
+    let products = loadProducts();
+    let sales = loadSales(); // only for clear all
+
+    function formatCurrency(v){ return "₹" + Number(v).toFixed(2); }
+    function escapeHtml(str){
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // Add / Edit product (admin protected)
+    stockForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      if (!ensureAdmin()) return; // admin check
+
+      const name = nameInput.value.trim();
+      const category = categoryInput.value.trim();
+      const qty = Number(quantityInput.value);
+      const unit = unitInput.value;
+      const price = Number(priceInput.value);
+      const cost = Number(costInput.value);
+
+      if (!name || !category || !isFinite(qty) || qty < 0 ||
+          !isFinite(price) || price <= 0 || !isFinite(cost) || cost < 0) {
+        alert("Please fill valid product data.");
+        return;
+      }
+
+      const product = { id: Date.now(), name, category, quantity: qty, unit, price, cost };
+      products.push(product);
+      saveProducts();
+      displayProducts(searchInput.value);
+      stockForm.reset();
+      nameInput.focus();
+    });
+
+    // Display products
+    function displayProducts(filter = "") {
+      const f = (filter || "").toLowerCase();
+      stockTableBody.innerHTML = "";
+      if (products.length === 0) {
+        stockTableBody.innerHTML = "<tr><td colspan='6' style='text-align:center'>No products added</td></tr>";
+        return;
+      }
+      products
+        .filter(p => p.name.toLowerCase().includes(f) || p.category.toLowerCase().includes(f))
+        .forEach(p => {
+          const totalValue = p.quantity * p.price;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${escapeHtml(p.name)}</td>
+            <td>${escapeHtml(p.category)}</td>
+            <td>${p.quantity} ${escapeHtml(p.unit)}</td>
+            <td>${formatCurrency(p.price)}</td>
+            <td>${formatCurrency(totalValue)}</td>
+            <td>
+              <button type="button" onclick="editProduct(${p.id})">Edit</button>
+              <button type="button" class="delete-btn" onclick="deleteProduct(${p.id})">Delete</button>
+            </td>`;
+          stockTableBody.appendChild(tr);
+        });
+    }
+
+    // Edit & Delete (admin protected)
+    window.deleteProduct = function(id){
+      if (!ensureAdmin()) return;
+      if (!confirm("Delete product?")) return;
+      products = products.filter(p => p.id !== id);
+      saveProducts();
+      displayProducts(searchInput.value);
+    };
+
+    window.editProduct = function(id){
+      if (!ensureAdmin()) return;
+      const p = products.find(x => x.id === id);
+      if (!p) return;
+      nameInput.value = p.name;
+      categoryInput.value = p.category;
+      quantityInput.value = p.quantity;
+      unitInput.value = p.unit;
+      priceInput.value = p.price;
+      costInput.value = p.cost;
+      products = products.filter(x => x.id !== id);
+      saveProducts();
+      displayProducts(searchInput.value);
+      nameInput.focus();
+    };
+
+    // Search
+    searchInput.addEventListener('input', function(){ displayProducts(this.value); });
+
+    // Clear all (admin protected)
+    clearAllBtn.addEventListener('click', function(){
+      if (!ensureAdmin()) return;
+      if (!confirm("Clear ALL products and sales data?")) return;
+      products = [];
+      sales = [];
+      saveProducts();
+      saveSales();
+      displayProducts();
+      alert("All products and sales cleared.");
+    });
+
+    // Export stock CSV
+    exportCSVBtn.addEventListener('click', function(){
+      if (products.length === 0) { alert("No stock to export"); return; }
+      const rows = [
+        ["name", "category", "quantity", "unit", "price", "cost"],
+        ...products.map(p => [p.name, p.category, p.quantity, p.unit, p.price, p.cost])
+      ];
+      if (typeof XLSX === "undefined") {
+        alert("XLSX library not loaded. Please include SheetJS to export Excel.\nRows logged in console.");
+        console.log("CSV rows:", rows);
+        return;
+      }
+      const worksheet = XLSX.utils.aoa_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Stock");
+      XLSX.writeFile(workbook, `stock_${Date.now()}.xlsx`);
+    });
+
+    // Initial display
+    displayProducts();
+
+    // Highlight active nav
+    document.addEventListener('DOMContentLoaded', () => {
+      const links = document.querySelectorAll('.nav-link');
+      const current = location.pathname.split('/').pop();
+      links.forEach(link => { if (link.getAttribute('href') === current) link.classList.add('active'); });
+    });
+  </script>
+</body>
+</html>
