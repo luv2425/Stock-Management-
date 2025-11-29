@@ -97,28 +97,21 @@
 
   <p><strong>Note:</strong> Make sure you have added products in the <em>Stock</em> page.</p>
 
-  <!-- Customer Details -->
-  <h2>Customer Details</h2>
-  <label for="custName">Customer Name</label>
-  <input id="custName" type="text" placeholder="Optional" />
+  <!-- 1) CART SECTION -->
+  <h2>Cart</h2>
+  <table id="cartTable">
+    <thead><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th><th>Remove</th></tr></thead>
+    <tbody></tbody>
+  </table>
 
-  <label for="custPhone">Phone</label>
-  <input id="custPhone" type="text" placeholder="Optional" />
-
-  <label for="custEmail">Email</label>
-  <input id="custEmail" type="email" placeholder="Optional" />
-
-  <!-- Product Search -->
+  <!-- 2) ADD ITEMS -->
   <h2>Add Items</h2>
   <label for="productSearch">Search Product</label>
-
-  <!-- wrapper + suggestions list -->
   <div class="field-wrapper">
     <input id="productSearch" type="text" placeholder="Type product name..." class="small" />
     <ul id="productSuggestions" class="suggestions"></ul>
   </div>
 
-  <!-- editable unit price -->
   <label for="unitPrice">Unit Price (₹)</label>
   <input id="unitPrice" type="number" min="0" step="0.01" class="small" />
 
@@ -129,13 +122,8 @@
     <button id="addToCartBtn" type="button" class="cart-btn">Add to Cart</button>
   </div>
 
-  <!-- Cart Table -->
-  <table id="cartTable">
-    <thead><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th><th>Remove</th></tr></thead>
-    <tbody></tbody>
-  </table>
-
-  <!-- Discount / Tax -->
+  <!-- 3) DISCOUNT & TAX -->
+  <h2>Discount & Tax</h2>
   <label for="discount">Discount (%)</label>
   <input id="discount" type="number" value="0" class="small" />
 
@@ -143,8 +131,22 @@
   <input id="tax" type="number" value="0" class="small" />
 
   <h3 id="totalAmount">Total: ₹0.00</h3>
+
+  <!-- 4) CUSTOMER DETAILS -->
+  <h2>Customer Details</h2>
+  <label for="custName">Customer Name</label>
+  <input id="custName" type="text" placeholder="Optional" />
+
+  <label for="custPhone">Phone</label>
+  <input id="custPhone" type="text" placeholder="Optional" />
+
+  <label for="custEmail">Email</label>
+  <input id="custEmail" type="email" placeholder="Optional" />
+
+  <!-- 5) BILL GENERATE BUTTONS -->
   <div class="controls">
-    <button id="checkoutBtn" type="button">Checkout & Generate Invoice</button>
+    <button id="checkoutBtn" type="button">Checkout & Simple Invoice</button>
+    <button id="gstInvoiceBtn" type="button" style="background:#17a2b8">Checkout & GST Invoice</button>
   </div>
 
   <script>
@@ -153,7 +155,8 @@
     // ---- Shared storage helpers ----
     const STORAGE_KEYS = {
       PRODUCTS: 'sbm_products',
-      SALES: 'sbm_sales'
+      SALES: 'sbm_sales',
+      GST_INV_NO: 'sbm_lastGstInvoiceNo'
     };
 
     function loadProducts() {
@@ -174,6 +177,13 @@
       localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(sales));
     }
 
+    function getNextGstInvoiceNo(){
+      let n = Number(localStorage.getItem(STORAGE_KEYS.GST_INV_NO) || "0");
+      n += 1;
+      localStorage.setItem(STORAGE_KEYS.GST_INV_NO, String(n));
+      return n;
+    }
+
     // ---- DOM ----
     const custNameInput = document.getElementById('custName');
     const custPhoneInput = document.getElementById('custPhone');
@@ -188,6 +198,7 @@
     const taxInput = document.getElementById('tax');
     const totalAmountDisplay = document.getElementById('totalAmount');
     const checkoutBtn = document.getElementById('checkoutBtn');
+    const gstInvoiceBtn = document.getElementById('gstInvoiceBtn');
 
     // ---- Data ----
     let products = loadProducts();
@@ -204,6 +215,29 @@
         .replace(/&/g,'&amp;')
         .replace(/</g,'&lt;')
         .replace(/>/g,'&gt;');
+    }
+
+    // ----- amount in words: Indian style -----
+    const aWords = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+    const bWords = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+    function numToWordsBelow100(n){
+      if(n<20) return aWords[n];
+      return bWords[Math.floor(n/10)] + (n%10 ? " " + aWords[n%10] : "");
+    }
+    function numberToIndianWords(num){
+      num = Math.round(num);
+      if(num===0) return "Zero Rupees Only";
+      let parts = [];
+      const crore = Math.floor(num/10000000); num%=10000000;
+      const lakh = Math.floor(num/100000); num%=100000;
+      const thousand = Math.floor(num/1000); num%=1000;
+      const hundred = Math.floor(num/100); num%=100;
+      if(crore) parts.push(numToWordsBelow100(crore)+" Crore");
+      if(lakh) parts.push(numToWordsBelow100(lakh)+" Lakh");
+      if(thousand) parts.push(numToWordsBelow100(thousand)+" Thousand");
+      if(hundred) parts.push(aWords[hundred]+" Hundred");
+      if(num) parts.push((parts.length?"and ":"")+numToWordsBelow100(num));
+      return parts.join(" ") + " Rupees Only";
     }
 
     // build suggestion list when typing
@@ -334,7 +368,7 @@
       displayCart();
     };
 
-    // Checkout
+    // ===== NORMAL CHECKOUT (simple invoice) =====
     checkoutBtn.addEventListener('click', function(){
       if (cart.length === 0) {
         alert("Cart is empty");
@@ -355,7 +389,6 @@
       const taxed = (total - discountAmt) * (1 + taxPct / 100);
       const finalAmount = Number(taxed);
 
-      // Keep copy for invoice
       const invoiceItems = cart.map(i => ({
         name: i.name,
         qty: i.cartQty,
@@ -385,8 +418,8 @@
       });
       saveSales();
 
-      // Generate invoice (tabular)
-      generateInvoicePDF({
+      // Simple invoice
+      generateSimpleInvoicePDF({
         customer: custNameInput.value || "Walk-in",
         phone: custPhoneInput.value || "",
         email: custEmailInput.value || "",
@@ -412,8 +445,88 @@
       alert("✅ Checkout complete — stock updated and invoice generated.");
     });
 
-    // Invoice PDF - improved tabular layout
-    function generateInvoicePDF(data){
+    // ===== GST CHECKOUT (image-style GST invoice) =====
+    gstInvoiceBtn.addEventListener('click', function(){
+      if (cart.length === 0) {
+        alert("Cart is empty");
+        return;
+      }
+
+      products = loadProducts(); // reload latest
+      let total = 0, costTotal = 0;
+
+      cart.forEach(item => {
+        total += item.cartQty * item.price;
+        costTotal += item.cartQty * (item.cost || 0);
+      });
+
+      const discountPct = Number(discountInput.value) || 0;
+      const taxPct = Number(taxInput.value) || 0;
+      const discountAmt = (total * discountPct) / 100;
+      const taxableValue = total - discountAmt;
+      const gstTotal = taxableValue * (taxPct / 100);
+      const finalAmount = taxableValue + gstTotal;
+
+      const invoiceItems = cart.map(i => ({
+        name: i.name,
+        qty: i.cartQty,
+        unit: i.unit,
+        price: i.price
+      }));
+
+      // Update stock quantities
+      cart.forEach(item => {
+        const p = products.find(x => x.id === item.id);
+        if (p) {
+          p.quantity = Number(p.quantity) - Number(item.cartQty);
+          checkAlerts(p);
+        }
+      });
+      saveProducts();
+
+      // Record sale
+      sales.push({
+        date: new Date().toISOString(),
+        customer: custNameInput.value || "Walk-in",
+        phone: custPhoneInput.value || "",
+        email: custEmailInput.value || "",
+        items: invoiceItems,
+        total: finalAmount,
+        cost: costTotal
+      });
+      saveSales();
+
+      // GST style invoice like photo
+      generateGSTInvoicePDF({
+        invoiceNo: getNextGstInvoiceNo(),
+        customer: custNameInput.value || "Walk-in",
+        phone: custPhoneInput.value || "",
+        email: custEmailInput.value || "",
+        items: invoiceItems,
+        total: finalAmount,
+        taxableValue,
+        gstPercent: taxPct,
+        discountPct
+      });
+
+      // Clear for next sale
+      cart = [];
+      displayCart();
+      custNameInput.value = "";
+      custPhoneInput.value = "";
+      custEmailInput.value = "";
+      discountInput.value = "0";
+      taxInput.value = "0";
+      billQtyInput.value = "";
+      productSearchInput.value = "";
+      unitPriceInput.value = "";
+      selectedProductId = null;
+
+      alert("✅ Checkout complete — stock updated and GST invoice generated.");
+    });
+
+    // ---------- SIMPLE TABULAR INVOICE ----------
+    function generateSimpleInvoicePDF(data){
       if (jsPDF && typeof jsPDF === "function") {
         const doc = new jsPDF();
 
@@ -486,6 +599,235 @@
       }
     }
 
+    // ---------- GST INVOICE LIKE SAMPLE IMAGE ----------
+    function generateGSTInvoicePDF(data){
+      if (!(jsPDF && typeof jsPDF === "function")) {
+        alert("jsPDF not loaded");
+        return;
+      }
+      const doc = new jsPDF();
+
+      const today = new Date();
+      const dateStr = today.toLocaleDateString();
+      const invNo = data.invoiceNo;
+
+      // ===== HEADER LEFT: BUSINESS DETAILS =====
+      doc.setFontSize(10);
+      doc.text("Anbu enterprices", 12, 12);
+      doc.setFontSize(8);
+      doc.text("5/61, MGR Nagar,", 12, 16);
+      doc.text("Periyampatti, Dharmapuri - 635205", 12, 20);
+      doc.text("State Name : Tamil Nadu, Code : 33", 12, 24);
+      doc.text("Contact : 6374343174, 9629767844", 12, 28);
+      doc.text("GSTIN : 33jarpk2247f1z8", 12, 32);
+      doc.text("E-mail : anburam567@gmail.com", 12, 36);
+
+      // ===== HEADER MIDDLE: TITLE =====
+      doc.setFontSize(11);
+      doc.text("Tax Invoice", 105, 10, null, null, "center");
+      doc.setFontSize(7);
+      doc.text("(ORIGINAL FOR RECIPIENT)", 105, 14, null, null, "center");
+
+      // ===== HEADER RIGHT: INVOICE INFO BOX =====
+      doc.setFontSize(8);
+      const rightX = 120;
+      let ry = 12;
+      doc.text("Invoice No.", rightX, ry);      doc.text(String(invNo), rightX+35, ry); ry+=5;
+      doc.text("Date", rightX, ry);             doc.text(dateStr, rightX+35, ry); ry+=5;
+      doc.text("Mode / Terms of Payment", rightX, ry); ry+=5;
+      doc.text("Reference No. & Date", rightX, ry);    ry+=5;
+      doc.text("Buyer's Order No.", rightX, ry);       ry+=5;
+      doc.text("Dated", rightX, ry); ry+=5;
+      doc.text("Dispatch Doc. No.", rightX, ry);       ry+=5;
+      doc.text("Delivery Note Date", rightX, ry);      ry+=5;
+      doc.text("Dispatched through", rightX, ry);      ry+=5;
+      doc.text("Destination", rightX, ry);             ry+=5;
+      doc.text("Terms of Delivery", rightX, ry);
+
+      // rectangle around header right
+      doc.rect(118, 8, 82, 48); // x, y, w, h
+
+      // rectangle around whole top section (left + right)
+      doc.rect(10, 8, 190, 48);
+
+      // ===== BUYER / SHIP TO SECTION =====
+      let y = 60;
+      doc.setFontSize(8);
+      doc.text("Buyer :", 12, y);
+      doc.text(data.customer || "Walk-in Customer", 25, y);
+      y += 5;
+      if (data.phone) { doc.text("Phone : " + data.phone, 25, y); y+=5; }
+      if (data.email) { doc.text("Email  : " + data.email, 25, y); y+=5; }
+      doc.text("State : Tamil Nadu  Code : 33", 25, y);
+
+      // border
+      doc.rect(10, 56, 190, 22);
+
+      // ===== ITEMS TABLE =====
+      const col = {
+        sl: 12,
+        desc: 22,
+        hsn: 90,
+        qty: 120,
+        rate: 140,
+        per: 160,
+        disc: 172,
+        amt: 196
+      };
+      const tableTop = 82;
+      y = tableTop;
+
+      doc.setFontSize(8);
+      doc.text("Sl", col.sl, y);
+      doc.text("Description of Goods", col.desc, y);
+      doc.text("HSN/SAC", col.hsn, y);
+      doc.text("Quantity", col.qty, y);
+      doc.text("Rate", col.rate, y);
+      doc.text("per", col.per, y);
+      doc.text("Disc", col.disc, y);
+      doc.text("Amount", col.amt, y, {align:"right"});
+
+      doc.line(10, y + 2, 200, y + 2);
+      y += 6;
+
+      let taxableTotal = 0;
+      let totalQty = 0;
+
+      data.items.forEach((it, index) => {
+        const qty = Number(it.qty);
+        const rate = Number(it.price);
+        const amount = qty * rate;
+        taxableTotal += amount;
+        totalQty += qty;
+
+        if (y > 220) {
+          doc.line(10, y, 200, y);
+          doc.addPage();
+          y = 20;
+        }
+
+        doc.text(String(index + 1), col.sl, y);
+        doc.text(String(it.name).substring(0, 45), col.desc, y);
+        doc.text("", col.hsn, y); // HSN can be filled later
+        doc.text(String(qty), col.qty, y);
+        doc.text(rate.toFixed(2), col.rate, y);
+        doc.text(it.unit || "Nos", col.per, y);
+        doc.text("-", col.disc, y);
+        doc.text(amount.toFixed(2), col.amt, y, {align:"right"});
+        y += 6;
+      });
+
+      // CGST/SGST text line in middle of items table
+      doc.text("CGST - (ON SALES)", 22, y+4);
+      doc.text("SGST - (ON SALES)", 22, y+9);
+
+      const itemsBottom = y + 14;
+
+      // outer border for items table
+      doc.rect(10, tableTop - 6, 190, itemsBottom - (tableTop - 6));
+
+      // vertical column lines
+      doc.line(20, tableTop - 6, 20, itemsBottom);    // after Sl
+      doc.line(88, tableTop - 6, 88, itemsBottom);    // after Description
+      doc.line(118, tableTop - 6, 118, itemsBottom);  // after HSN
+      doc.line(136, tableTop - 6, 136, itemsBottom);  // after Qty
+      doc.line(156, tableTop - 6, 156, itemsBottom);  // after Rate
+      doc.line(168, tableTop - 6, 168, itemsBottom);  // after per
+      doc.line(186, tableTop - 6, 186, itemsBottom);  // after Disc
+
+      // total row (bottom right)
+      const discountAmt = taxableTotal * ((data.discountPct || 0) / 100);
+      const taxableAfterDisc = taxableTotal - discountAmt;
+      const gstPercent = data.gstPercent || 0;
+      const halfGst = gstPercent / 2;
+      const cgstAmt = taxableAfterDisc * (halfGst / 100);
+      const sgstAmt = taxableAfterDisc * (halfGst / 100);
+      const grandTotal = taxableAfterDisc + cgstAmt + sgstAmt;
+
+      doc.setFontSize(8);
+      const totalY = itemsBottom + 5;
+      doc.text("Total", 120, totalY);
+      doc.text(String(totalQty) + " Nos", 136, totalY);
+      doc.text(taxableAfterDisc.toFixed(2), 196, totalY, {align:"right"});
+
+      // ===== Amount chargeable (in words) =====
+      let words = numberToIndianWords(grandTotal);
+      let yWords = totalY + 10;
+      doc.rect(10, totalY + 6, 190, 16);
+      doc.text("Amount Chargeable (in words)", 12, totalY + 10);
+      doc.text(words, 12, yWords+4, {maxWidth:120});
+      doc.text("E. & O.E", 185, totalY + 10, {align:"right"});
+
+      // ===== GST SUMMARY TABLE (bottom) =====
+      let gstTop = totalY + 24;
+      y = gstTop;
+
+      doc.text("HSN/SAC", 12, y);
+      doc.text("Taxable", 45, y);
+      doc.text("Central Tax", 85, y);
+      doc.text("State Tax", 130, y);
+      doc.text("Total Tax", 175, y);
+      y += 5;
+      doc.text("Value", 45, y);
+      doc.text("Rate  Amount", 85, y);
+      doc.text("Rate  Amount", 130, y);
+
+      doc.line(10, gstTop + 2, 200, gstTop + 2);
+      y += 6;
+
+      // single row
+      doc.text("-", 12, y);
+      doc.text(taxableAfterDisc.toFixed(2), 45, y);
+      doc.text(halfGst.toFixed(1) + "%", 85, y);
+      doc.text(cgstAmt.toFixed(2), 102, y);
+      doc.text(halfGst.toFixed(1) + "%", 130, y);
+      doc.text(sgstAmt.toFixed(2), 147, y);
+      doc.text((cgstAmt + sgstAmt).toFixed(2), 185, y);
+
+      const gstBottom = y + 4;
+      doc.rect(10, gstTop - 4, 190, gstBottom - (gstTop - 4));
+
+      // Tax amount in words line
+      const taxWords = numberToIndianWords(cgstAmt + sgstAmt);
+      let taxWordsY = gstBottom + 8;
+      doc.text("Tax Amount (in words) :", 12, taxWordsY);
+      doc.text(taxWords, 60, taxWordsY, {maxWidth:120});
+
+      // ===== BANK DETAILS + DECLARATION + SIGN =====
+      let bankTop = taxWordsY + 6;
+      doc.rect(10, bankTop, 120, 35);  // left box
+      doc.rect(130, bankTop, 70, 35);  // right box
+
+      let by = bankTop + 5;
+      doc.text("Company's Bank Details", 12, by);
+      by += 5;
+      doc.text("Bank Name : kvb - cc account", 12, by); by+=4;
+      doc.text("Account Name : anbarasu govindhasami", 12, by); by+=4;
+      doc.text("Account No : 652486452", 12, by); by+=4;
+      doc.text("IFSC Code : KVB0000125", 12, by); by+=4;
+      doc.text("Branch : Dharmapuri", 12, by);
+
+      let sy = bankTop + 5;
+      doc.text("For Anbu enterprices", 134, sy);
+      sy += 20;
+      doc.text("Authorised Signatory", 146, sy);
+
+      // Declaration box bottom
+      let decTop = bankTop + 37;
+      doc.rect(10, decTop, 190, 18);
+      doc.text("Declaration", 12, decTop + 5);
+      doc.text(
+        "We declare that this invoice shows the actual price of the goods described and that all particulars are true.",
+        12, decTop + 10, {maxWidth:180}
+      );
+
+      // Footer note
+      doc.setFontSize(7);
+      doc.text("This is a Computer Generated Invoice", 105, 295, null, null, "center");
+
+      doc.save(`gst_invoice_${invNo}.pdf`);
+    }
+
     // Low stock alerts
     function checkAlerts(product){
       const q = Number(product.quantity);
@@ -522,7 +864,7 @@
         unitPriceInput,    // Enter -> Quantity
         billQtyInput,      // Enter -> Add to Cart (click)
         discountInput,     // Enter -> Tax
-        taxInput           // Enter -> Checkout (click)
+        taxInput           // Enter -> Checkout (simple)
       ];
 
       order.forEach((el, idx) => {
@@ -539,7 +881,7 @@
               return;
             }
 
-            // From Tax -> Checkout
+            // From Tax -> Simple Checkout
             if (el === taxInput) {
               checkoutBtn.click();
               return;
