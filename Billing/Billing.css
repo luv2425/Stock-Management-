@@ -1,0 +1,167 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #f4f4f4;
+}
+
+h1 {
+    color: #096ae9
+}
+
+h2,
+h3 {
+    color: #333
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left
+}
+
+th {
+    background: #007bff;
+    color: #fff
+}
+
+tr:nth-child(even) {
+    background: #f2f2f2
+}
+
+label {
+    display: block;
+    margin: 8px 0 4px
+}
+
+input,
+select,
+button {
+    padding: 8px;
+    margin-bottom: 8px;
+    max-width: 320px
+}
+
+button {
+    background: #28a745;
+    color: #fff;
+    border: none;
+    cursor: pointer
+}
+
+button:hover {
+    background: #218838
+}
+
+.delete-btn {
+    background: #dc3545
+}
+
+.cart-btn {
+    background: #ffc107;
+    color: #000
+}
+
+.controls {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-wrap: wrap
+}
+
+.small {
+    max-width: 140px
+}
+
+/* 🌈 Pretty navbar (same style as stock page) */
+.nav {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: #ffffff;
+    padding: 14px 20px;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 24px;
+}
+
+.nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 15px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.nav a.dashboard {
+    background: #0d6efd;
+}
+
+/* blue */
+.nav a.stock {
+    background: #198754;
+}
+
+/* green */
+.nav a.billing {
+    background: #ffc107;
+    color: #000;
+}
+
+/* yellow */
+.nav a.reports {
+    background: #dc3545;
+}
+
+/* red */
+.nav a:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+    opacity: 0.95;
+}
+
+.nav a.active {
+    box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px rgba(0, 0, 0, 0.08);
+}
+
+/* suggestion dropdown styling */
+.suggestions {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 320px;
+    border: 1px solid #ddd;
+    background: #fff;
+    position: absolute;
+    z-index: 10;
+    max-height: 180px;
+    overflow-y: auto;
+    display: none;
+}
+
+.suggestions li {
+    padding: 6px 8px;
+    cursor: pointer;
+}
+
+.suggestions li:hover {
+    background: #f0f0f0;
+}
+
+.field-wrapper {
+    position: relative;
+    /* for suggestions absolute positioning */
+    display: inline-block;
+}

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Billing / POS</title>
+    <!-- jsPDF for PDF invoice -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Page CSS -->
+    <link rel="stylesheet" href="billing.css">
+
+    <!-- Page JS -->
+    <script src="billing.js" defer></script>
+</head>
+
+<body>
+    <!-- Navigation (updated to pill style) -->
+    <div class="nav">
+        <a href="dashboard.html" class="dashboard">📊 Dashboard</a>
+        <a href="stock.html" class="stock">📦 Stock</a>
+        <a href="billing.html" class="billing">🧾 Billing</a>
+        <a href="reports.html" class="reports">📈 Reports</a>
+    </div>
+    <h1>🧾 Billing / POS</h1>
+
+    <p><strong>Note:</strong> Make sure you have added products in the <em>Stock</em> page.</p>
+
+    <!-- 1) CART SECTION -->
+    <h2>Cart</h2>
+    <table id="cartTable">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Unit Price</th>
+                <th>Subtotal</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <!-- 2) ADD ITEMS -->
+    <h2>Add Items</h2>
+    <label for="productSearch">Search Product</label>
+    <div class="field-wrapper">
+        <input id="productSearch" type="text" placeholder="Type product name..." class="small" />
+        <ul id="productSuggestions" class="suggestions"></ul>
+    </div>
+
+    <label for="unitPrice">Unit Price (₹)</label>
+    <input id="unitPrice" type="number" min="0" step="0.01" class="small" />
+
+    <label for="billQty">Quantity</label>
+    <input id="billQty" type="number" min="0" step="any" class="small" />
+
+    <div class="controls">
+        <button id="addToCartBtn" type="button" class="cart-btn">Add to Cart</button>
+    </div>
+
+    <!-- 3) DISCOUNT & TAX -->
+    <h2>Discount & Tax</h2>
+    <label for="discount">Discount (%)</label>
+    <input id="discount" type="number" value="0" class="small" />
+
+    <label for="tax">Tax (%)</label>
+    <input id="tax" type="number" value="0" class="small" />
+
+    <h3 id="totalAmount">Total: ₹0.00</h3>
+
+    <!-- 4) CUSTOMER DETAILS -->
+    <h2>Customer Details</h2>
+    <label for="custName">Customer Name</label>
+    <input id="custName" type="text" placeholder="Optional" />
+
+    <label for="custPhone">Phone</label>
+    <input id="custPhone" type="text" placeholder="Optional" />
+
+    <label for="custEmail">Email</label>
+    <input id="custEmail" type="email" placeholder="Optional" />
+
+    <!-- 5) BILL GENERATE BUTTONS -->
+    <div class="controls">
+        <button id="checkoutBtn" type="button">Checkout & Simple Invoice</button>
+        <button id="gstInvoiceBtn" type="button" style="background:#17a2b8">Checkout & GST Invoice</button>
+    </div>
+</body>
+
+</html>
